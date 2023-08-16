@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 const validator = require('validator')
-
-const User = mongoose.model('User', {     // takes 2 arguments. 1- String name for the model and 2- definition where we define all of the fields we want.
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const userSchema = new mongoose.Schema( {     // takes 2 arguments. 1- String name for the model and 2- definition where we define all of the fields we want.
     name: {
 type: String,
 required: true,
@@ -9,7 +10,7 @@ trim: true
     },
     email: {
         type: String,
-        default: 0,
+        unique: true,
         required: true,
         trim: true,
         lowercase: true,
@@ -37,7 +38,53 @@ validate(value){
         throw new Error("Age must be a positive number");
     }
 }
-    }
+    },
+    tokens: [{
+        token: {
+            type: String,
+            required: true
+        }
+    }]
 })
+
+userSchema.methods.toJSON = function (){
+    const user = this;
+    const userObject = user.toObject();
+    delete userObject.password;
+    delete userObject.tokens;
+    return userObject;
+
+}
+
+userSchema.methods.generateAuthToken = async function (){
+    const user = this;
+    const token = jwt.sign({_id: user._id.toString()}, 'thisismynewcourse')
+    user.tokens = user.tokens.concat({token})
+    await user.save();
+    return token;
+}
+
+userSchema.statics.findByCredentials = async (email, password) =>{
+    const user = await User.findOne({email})
+    if(!user){
+        throw new Error('Unable to login1')
+    }
+    const isMatch = await bcrypt.compare(password, user.password)
+    if(!isMatch){
+        throw new Error('Unable to login2')
+    }
+    return user;
+}
+
+//Hash the plain text password before saving 
+userSchema.pre('save', async function(next){  //pre because we want to perform some action before saving. post is for after 
+ const user = this;
+ if(user.isModified('password')){
+    user.password = await bcrypt.hash(user.password, 8)
+ }
+ next()
+})  
+
+const User = mongoose.model('User', userSchema);
 
 module.exports = User
