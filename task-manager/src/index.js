@@ -15,13 +15,12 @@ app.listen(3000, () => {
 })
 
 
-const jwt = require('jsonwebtoken')
-const myFunction = async () => {
-//   const token = jwt.sign({ _id: 'abc123' }, 'thisismynewcourse', {expiresIn: '0 seconds'})
-//   console.log(token)
+const Task = require('./models/task')
+const User = require('./models/user');
 
-//  const data =  jwt.verify(token, 'thisismynewcourse');
-//  console.log(data)
+const main = async () => {
+  const user = await User.findById('64dc6e70678012ec42d4172f') //id of owner
+  await user.populate('tasks')
+  console.log(user.tasks)
 }
-
-myFunction()
+main()
